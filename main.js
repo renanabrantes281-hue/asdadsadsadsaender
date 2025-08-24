@@ -4,32 +4,13 @@ const axios = require("axios");
 
 // Variáveis do .env
 const token = process.env.DISCORD_TOKEN;
-const outputWebhook = process.env.OUTPUT_WEBHOOK;
+const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;   // Para < 10M
+const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH; // Para >= 10M
 
 // IDs dos canais que serão monitorados
 const monitorChannelIds = [
   "1397492388204777492",
   "1397492388204777492"
-];
-
-// Nomes permitidos
-const allowedNames = [
-  "La Vacca Saturno Saturnita",
-  "Karkerkar Kurkur",
-  "Chimpanzini Spiderini",
-  "Agarrini la Palini",
-  "Los Tralaleritos",
-  "Las Tralaleritas",
-  "Las Vaquitas Saturnitas",
-  "Graipuss Medussi",
-  "Chicleteira Bicicleteira",
-  "La Grande Combinasion",
-  "Los Combinasionas",
-  "Nuclearo Dinossauro",
-  "Los Hotspotsitos",
-  "Torrtuginni Dragonfrutini",
-  "Pot Hotspot",
-  "Esok Sekolah",
 ];
 
 // Nomes que mencionam todos
@@ -41,81 +22,115 @@ const mentionEveryoneNames = [
 const client = new Client();
 
 client.on("ready", () => {
-  console.log(`Logado como ${client.user.tag}`);
+  console.log(`✅ Logado como ${client.user.tag}`);
 });
 
-// Função para enviar Job ID mobile para algum endpoint
-async function sendJobIdMobile(jobIdMobile) {
-  try {
-    await axios.post("ooooooooooooooooo", { jobIdMobile });
-    console.log(`Job ID Mobile enviado: ${jobIdMobile}`);
-  } catch (err) {
-    console.error("Erro enviando jobIdMobile:", err.message);
-  }
-}
-
 client.on("messageCreate", async (msg) => {
-  if (!monitorChannelIds.includes(msg.channel.id)) return;
-  if (!msg.webhookId) return;
-
   try {
+    // Só pega mensagens dos canais certos e vindas de webhook
+    if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
     if (!msg.embeds.length) return;
+
     const embed = msg.embeds[0];
     const fields = embed.fields || [];
 
-    function getFieldValue(name) {
+    // Função para pegar campo
+    const getFieldValue = (name) => {
       const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
       return field ? field.value : "N/A";
-    }
-
-    const name = getFieldValue("name");
-    if (!allowedNames.includes(name) && !mentionEveryoneNames.includes(name)) {
-      return;
-    }
-
-    const money = getFieldValue("Generation");
-    const players = getFieldValue("players");
-    const jobMobileRaw = getFieldValue("mobile");
-    const jobMobile = jobMobileRaw ? jobMobileRaw.replace(/`/g, "") : "N/A";
-    const jobPCRaw = getFieldValue("pc");
-    const jobPC = jobPCRaw ? jobPCRaw.replace(/`/g, "") : "N/A";
-
-    if (jobMobile !== "N/A") {
-      await sendJobIdMobile(jobMobile);
-    }
-
-    const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
-
-    const newEmbed = {
-      title: "Shadow Hub Pet Finder",
-      color: 0x9152f8,
-      fields: [
-        { name: "🏷️ Name", value: `**${name}**`, inline: true },
-        { name: "💰 Money Per Sec", value: `**${money}**`, inline: true },
-        { name: "👥 Players", value: `**${players}**`, inline: true },
-        { name: "🔢 Job ID (Mobile)", value: jobMobile, inline: false },
-        { name: "🔢 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
-        { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
-      ],
-      timestamp: new Date(),
-      footer: {
-        text: "SHADOW HUB ON TOP",
-        icon_url: "https://images-ext-1.discordapp.net/external/fgJeoHl6eLNgBgyeAdMT_AecnqNnvhgeIFD0WMK_ZbQ/https/i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg?format=webp&width=847&height=847"
-      },
     };
 
-    const payload = { embeds: [newEmbed] };
+    // Pega nomes
+    let namesRaw = getFieldValue("name");
+    if (namesRaw === "N/A") return;
+    let namesList = namesRaw.split(",").map(n => n.trim());
 
-    if (mentionEveryoneNames.includes(name)) {
-      payload.content = "@everyone";
-    }
+    // Pega valores de dinheiro
+    const moneyRaw = getFieldValue("Generation");
+    if (!moneyRaw || moneyRaw === "N/A") return;
 
-    await axios.post(outputWebhook, payload);
+    // Converte todos os valores para número puro
+    const moneyList = moneyRaw.split(",").map(m => {
+      m = m.trim().toUpperCase();
+      let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
+      if (m.includes("M")) value *= 1_000_000;
+      else if (m.includes("K")) value *= 1_000;
+      return value;
+    });
 
-    console.log(`Mensagem enviada: ${name}`);
+    const players = getFieldValue("players");
+    const jobMobile = getFieldValue("mobile").replace(/`/g, "") || "N/A";
+    const jobPC = getFieldValue("pc").replace(/`/g, "") || "N/A";
+    const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
+
+    // ---- Separa pets por High e Low ----
+    let petsHigh = [];
+    let petsLow = [];
+    let mentionEveryone = false;
+
+    namesList.forEach((name, idx) => {
+      const moneyValue = moneyList[idx] || 0;
+      if (mentionEveryoneNames.includes(name)) mentionEveryone = true;
+
+      if (moneyValue >= 10_000_000) {
+        petsHigh.push({ name, money: moneyValue });
+      } else {
+        petsLow.push({ name, money: moneyValue });
+      }
+    });
+
+    // Função para formatar valores
+    const formatMoney = (num) => {
+      if (num >= 1_000_000) return `${Math.round(num / 1_000_000)}M/s`;
+      if (num >= 1_000) return `${Math.round(num / 1_000)}K/s`;
+      return `${num}/s`;
+    };
+
+    // Função para enviar embed
+    const sendEmbed = (pets, targetWebhook) => {
+      if (!pets.length) return;
+
+      const embedToSend = {
+        title: "Shadow Hub Pet Finder",
+        color: 0x9152f8,
+        description: `Found **${pets.length}** pet(s): ${pets.map(p => p.name).join(" , ")}`,
+        fields: [
+          {
+            name: "🏷️ Name",
+            value: pets.map(p => p.name).join(" , "),
+            inline: false
+          },
+          {
+            name: "💰 Generation",
+            value: pets.map(p => formatMoney(p.money)).join(" , "),
+            inline: false
+          },
+          { name: "👥 Players", value: `**${players}**`, inline: true },
+          { name: "🔢 Job ID (Mobile)", value: jobMobile, inline: false },
+          { name: "🔢 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
+          { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
+        ],
+        timestamp: new Date(),
+        footer: {
+          text: "SHADOW HUB ON TOP",
+          icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg"
+        },
+      };
+
+      const payload = { embeds: [embedToSend] };
+      if (mentionEveryone) payload.content = "@everyone";
+
+      axios.post(targetWebhook, payload)
+        .then(() => console.log(`📨 Enviado ${pets.length} pets para ${targetWebhook === webhookHigh ? "HIGH" : "LOW"}`))
+        .catch(err => console.error("❌ Erro webhook:", err.message));
+    };
+
+    // Envia os dois grupos separados
+    sendEmbed(petsHigh, webhookHigh);
+    sendEmbed(petsLow, webhookLow);
 
   } catch (err) {
-    console.error("Erro ao processar mensagem:", err);
+    console.error("⚠️ Erro ao processar:", err);
   }
 });
 
