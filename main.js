@@ -1,6 +1,19 @@
 require("dotenv").config();
+const express = require("express");
 const { Client } = require("discord.js-selfbot-v13");
 const axios = require("axios");
+
+// Configurações do Express para abrir porta
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send("Bot rodando e servidor ativo!");
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor web rodando na porta ${PORT}`);
+});
 
 // Variáveis do .env
 const token = process.env.DISCORD_TOKEN;
@@ -27,29 +40,24 @@ client.on("ready", () => {
 
 client.on("messageCreate", async (msg) => {
   try {
-    // Só pega mensagens dos canais certos e vindas de webhook
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
     if (!msg.embeds.length) return;
 
     const embed = msg.embeds[0];
     const fields = embed.fields || [];
 
-    // Função para pegar campo
     const getFieldValue = (name) => {
       const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
       return field ? field.value : "N/A";
     };
 
-    // Pega nomes
     let namesRaw = getFieldValue("name");
     if (namesRaw === "N/A") return;
     let namesList = namesRaw.split(",").map(n => n.trim());
 
-    // Pega valores de dinheiro
     const moneyRaw = getFieldValue("Generation");
     if (!moneyRaw || moneyRaw === "N/A") return;
 
-    // Converte todos os valores para número puro
     const moneyList = moneyRaw.split(",").map(m => {
       m = m.trim().toUpperCase();
       let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
@@ -63,7 +71,6 @@ client.on("messageCreate", async (msg) => {
     const jobPC = getFieldValue("pc").replace(/`/g, "") || "N/A";
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
-    // ---- Separa pets por High e Low ----
     let petsHigh = [];
     let petsLow = [];
     let mentionEveryone = false;
@@ -79,14 +86,12 @@ client.on("messageCreate", async (msg) => {
       }
     });
 
-    // Função para formatar valores
     const formatMoney = (num) => {
       if (num >= 1_000_000) return `${Math.round(num / 1_000_000)}M/s`;
       if (num >= 1_000) return `${Math.round(num / 1_000)}K/s`;
       return `${num}/s`;
     };
 
-    // Função para enviar embed
     const sendEmbed = (pets, targetWebhook) => {
       if (!pets.length) return;
 
@@ -125,7 +130,6 @@ client.on("messageCreate", async (msg) => {
         .catch(err => console.error("❌ Erro webhook:", err.message));
     };
 
-    // Envia os dois grupos separados
     sendEmbed(petsHigh, webhookHigh);
     sendEmbed(petsLow, webhookLow);
 
