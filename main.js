@@ -15,6 +15,13 @@ app.listen(PORT, () => {
   console.log(`Servidor web rodando na porta ${PORT}`);
 });
 
+// 🔄 Auto Ping interno a cada 25s
+setInterval(() => {
+  axios.get(`http://localhost:${PORT}`)
+    .then(() => console.log("🔄 Auto-ping enviado"))
+    .catch(() => console.log("⚠️ Falha no auto-ping"));
+}, 25000);
+
 // Variáveis do .env
 const token = process.env.DISCORD_TOKEN;
 const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;   // Para < 10M
@@ -123,7 +130,9 @@ client.on("messageCreate", async (msg) => {
       };
 
       const payload = { embeds: [embedToSend] };
-      if (mentionEveryone) payload.content = "@everyone";
+
+      // 🔒 NÃO adiciona @everyone para evitar spam no servidor
+      // if (mentionEveryone) payload.content = "@everyone";
 
       axios.post(targetWebhook, payload)
         .then(() => console.log(`📨 Enviado ${pets.length} pets para ${targetWebhook === webhookHigh ? "HIGH" : "LOW"}`))
