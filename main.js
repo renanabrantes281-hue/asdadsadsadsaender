@@ -15,7 +15,7 @@ app.listen(PORT, () => {
   console.log(`Servidor web rodando na porta ${PORT}`);
 });
 
-// Auto Ping interno
+// Auto Ping interno para manter vivo
 setInterval(() => {
   axios.get(`http://localhost:${PORT}`)
     .then(() => console.log("🔄 Auto-ping enviado"))
@@ -29,14 +29,13 @@ const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH; // >=10M
 
 // Canais monitorados
 const monitorChannelIds = [
-  "1397492388204777492",
   "1397492388204777492"
 ];
 
 // Nomes que mencionam everyone
 const mentionEveryoneNames = [
   "Garama and Madundung",
-  "Dragon Cannelloni",
+  "Dragon Cannelloni"
 ];
 
 const client = new Client();
@@ -58,9 +57,9 @@ client.on("messageCreate", async (msg) => {
       return field ? field.value : "N/A";
     };
 
-    let namesRaw = getFieldValue("name");
+    const namesRaw = getFieldValue("name");
     if (namesRaw === "N/A") return;
-    let namesList = namesRaw.split(",").map(n => n.trim());
+    const namesList = namesRaw.split(",").map(n => n.trim());
 
     const moneyRaw = getFieldValue("Generation");
     if (!moneyRaw || moneyRaw === "N/A") return;
@@ -74,8 +73,8 @@ client.on("messageCreate", async (msg) => {
     });
 
     const players = getFieldValue("players");
-    const jobMobile = getFieldValue("mobile").replace(/`/g, "") || "N/A";
-    const jobPC = getFieldValue("pc").replace(/`/g, "") || "N/A";
+    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/`/g, "");
+    const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
     let petsHigh = [];
@@ -102,22 +101,22 @@ client.on("messageCreate", async (msg) => {
     const sendEmbed = (pets, targetWebhook) => {
       if (!pets.length) return;
 
-      // Pega IDs do primeiro pet da lista
+      // Use jobMobile/jobPC para parâmetros do link
       const placeId = jobMobile;
       const gameInstanceId = jobPC;
 
       const embedToSend = {
         title: "Shadow Hub Pet Finder",
         color: 0x9152f8,
-        description: `Found **${pets.length}** pet(s): ${pets.map(p => p.name).join(" , ")}`,
+        description: `Found **${pets.length}** pet(s): ${pets.map(p => p.name).join(", ")}`,
         fields: [
-          { name: "🏷️ Name", value: pets.map(p => p.name).join(" , "), inline: false },
-          { name: "💰 Generation", value: pets.map(p => formatMoney(p.money)).join(" , "), inline: false },
+          { name: "🏷️ Name", value: pets.map(p => p.name).join(", "), inline: false },
+          { name: "💰 Generation", value: pets.map(p => formatMoney(p.money)).join(", "), inline: false },
           { name: "👥 Players", value: `**${players}**`, inline: true },
-          { name: "🔢 Job ID (Mobile)", value: jobMobile, inline: false },
-          { name: "🔢 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
+          { name: "🔢 Job ID (Mobile)", value: placeId, inline: false },
+          { name: "🔢 Job ID (PC)", value: `\`\`\`${gameInstanceId}\`\`\``, inline: false },
           { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
-          { name: "🚀 Click for Join", value: `[Click for join](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/shadowhub.html?placeId=${placeId}&gameInstanceId=${gameInstanceId})`, inline: false }
+          { name: "🚀 Click for Join", value: `[Click for join](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${placeId}&gameInstanceId=${gameInstanceId})`, inline: false }
         ],
         timestamp: new Date(),
         footer: { text: "SHADOW HUB ON TOP", icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg" },
@@ -139,4 +138,3 @@ client.on("messageCreate", async (msg) => {
 });
 
 client.login(token);
-
