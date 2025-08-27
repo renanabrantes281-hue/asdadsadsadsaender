@@ -26,8 +26,11 @@ setInterval(() => {
 const token = process.env.DISCORD_TOKEN;
 const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;
 
-// Suporta múltiplos webhooks HIGH separados por vírgula
-const webhookHighs = process.env.OUTPUT_WEBHOOK_HIGH.split(",").map(w => w.trim());
+// Dois webhooks HIGH separados
+const webhookHighs = [
+  process.env.OUTPUT_WEBHOOK_HIGH,
+  process.env.OUTPUT_WEBHOOK_HIGH_2
+].filter(Boolean);
 
 // Canais monitorados
 const monitorChannelIds = [
