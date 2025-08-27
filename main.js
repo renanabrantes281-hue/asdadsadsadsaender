@@ -24,8 +24,10 @@ setInterval(() => {
 
 // Variáveis do .env
 const token = process.env.DISCORD_TOKEN;
-const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;   // <10M
-const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH; // >=10M
+const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;
+
+// Suporta múltiplos webhooks HIGH separados por vírgula
+const webhookHighs = process.env.OUTPUT_WEBHOOK_HIGH.split(",").map(w => w.trim());
 
 // Canais monitorados
 const monitorChannelIds = [
@@ -98,10 +100,9 @@ client.on("messageCreate", async (msg) => {
       return `${num}/s`;
     };
 
-    const sendEmbed = (pets, targetWebhook) => {
+    const sendEmbed = (pets, targetWebhooks) => {
       if (!pets.length) return;
 
-      // Use jobMobile/jobPC para parâmetros do link
       const placeId = jobMobile;
       const gameInstanceId = jobPC;
 
@@ -124,13 +125,16 @@ client.on("messageCreate", async (msg) => {
 
       const payload = { embeds: [embedToSend] };
 
-      axios.post(targetWebhook, payload)
-        .then(() => console.log(`📨 Enviado ${pets.length} pets para ${targetWebhook === webhookHigh ? "HIGH" : "LOW"}`))
-        .catch(err => console.error("❌ Erro webhook:", err.message));
+      targetWebhooks.forEach(webhook => {
+        axios.post(webhook, payload)
+          .then(() => console.log(`📨 Enviado ${pets.length} pets para webhook: ${webhook}`))
+          .catch(err => console.error("❌ Erro webhook:", err.message));
+      });
     };
 
-    sendEmbed(petsHigh, webhookHigh);
-    sendEmbed(petsLow, webhookLow);
+    // Envio para webhooks
+    sendEmbed(petsHigh, webhookHighs);
+    sendEmbed(petsLow, [webhookLow]);
 
   } catch (err) {
     console.error("⚠️ Erro ao processar:", err);
