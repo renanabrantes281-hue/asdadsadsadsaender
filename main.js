@@ -117,27 +117,13 @@ client.on("messageCreate", async (msg) => {
           { name: "🔢 Job ID (Mobile)", value: jobMobile, inline: false },
           { name: "🔢 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
           { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
+          { name: "🚀 Click for Join", value: `[Clique aqui](https://seusite.github.io/shadowhub.html?placeId=${placeId}&gameInstanceId=${gameInstanceId})`, inline: false }
         ],
         timestamp: new Date(),
         footer: { text: "SHADOW HUB ON TOP", icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg" },
       };
 
-      // Botão de link
-      const components = [
-        {
-          type: 1,
-          components: [
-            {
-              type: 2,
-              label: "🚀 Click for Join",
-              style: 5, // Link
-              url: `https://seusite.github.io/shadowhub.html?placeId=${placeId}&gameInstanceId=${gameInstanceId}`
-            }
-          ]
-        }
-      ];
-
-      const payload = { embeds: [embedToSend], components };
+      const payload = { embeds: [embedToSend] };
 
       axios.post(targetWebhook, payload)
         .then(() => console.log(`📨 Enviado ${pets.length} pets para ${targetWebhook === webhookHigh ? "HIGH" : "LOW"}`))
