@@ -3,7 +3,7 @@ const express = require("express");
 const { Client } = require("discord.js-selfbot-v13");
 const axios = require("axios");
 
-// Configurações do Express para abrir porta
+// Configurações do Express
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -15,7 +15,7 @@ app.listen(PORT, () => {
   console.log(`Servidor web rodando na porta ${PORT}`);
 });
 
-// 🔄 Auto Ping interno a cada 25s
+// Auto Ping interno
 setInterval(() => {
   axios.get(`http://localhost:${PORT}`)
     .then(() => console.log("🔄 Auto-ping enviado"))
@@ -24,16 +24,16 @@ setInterval(() => {
 
 // Variáveis do .env
 const token = process.env.DISCORD_TOKEN;
-const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;   // Para < 10M
-const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH; // Para >= 10M
+const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;   // <10M
+const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH; // >=10M
 
-// IDs dos canais que serão monitorados
+// Canais monitorados
 const monitorChannelIds = [
   "1397492388204777492",
   "1397492388204777492"
 ];
 
-// Nomes que mencionam todos
+// Nomes que mencionam everyone
 const mentionEveryoneNames = [
   "Garama and Madundung",
   "Dragon Cannelloni",
@@ -102,37 +102,42 @@ client.on("messageCreate", async (msg) => {
     const sendEmbed = (pets, targetWebhook) => {
       if (!pets.length) return;
 
+      // Pega IDs do primeiro pet da lista
+      const placeId = jobMobile;
+      const gameInstanceId = jobPC;
+
       const embedToSend = {
         title: "Shadow Hub Pet Finder",
         color: 0x9152f8,
         description: `Found **${pets.length}** pet(s): ${pets.map(p => p.name).join(" , ")}`,
         fields: [
-          {
-            name: "🏷️ Name",
-            value: pets.map(p => p.name).join(" , "),
-            inline: false
-          },
-          {
-            name: "💰 Generation",
-            value: pets.map(p => formatMoney(p.money)).join(" , "),
-            inline: false
-          },
+          { name: "🏷️ Name", value: pets.map(p => p.name).join(" , "), inline: false },
+          { name: "💰 Generation", value: pets.map(p => formatMoney(p.money)).join(" , "), inline: false },
           { name: "👥 Players", value: `**${players}**`, inline: true },
           { name: "🔢 Job ID (Mobile)", value: jobMobile, inline: false },
           { name: "🔢 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
           { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
         ],
         timestamp: new Date(),
-        footer: {
-          text: "SHADOW HUB ON TOP",
-          icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg"
-        },
+        footer: { text: "SHADOW HUB ON TOP", icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg" },
       };
 
-      const payload = { embeds: [embedToSend] };
+      // Botão de link
+      const components = [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              label: "🚀 Click for Join",
+              style: 5, // Link
+              url: `https://seusite.github.io/shadowhub.html?placeId=${placeId}&gameInstanceId=${gameInstanceId}`
+            }
+          ]
+        }
+      ];
 
-      // 🔒 NÃO adiciona @everyone para evitar spam no servidor
-      // if (mentionEveryone) payload.content = "@everyone";
+      const payload = { embeds: [embedToSend], components };
 
       axios.post(targetWebhook, payload)
         .then(() => console.log(`📨 Enviado ${pets.length} pets para ${targetWebhook === webhookHigh ? "HIGH" : "LOW"}`))
