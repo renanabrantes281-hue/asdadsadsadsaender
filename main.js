@@ -41,11 +41,6 @@ const monitorChannelIds = [
   "1397492388204777492"
 ];
 
-const mentionEveryoneNames = [
-  "Garama and Madundung",
-  "Dragon Cannelloni"
-];
-
 const client = new Client();
 
 client.on("ready", () => {
@@ -53,12 +48,13 @@ client.on("ready", () => {
 });
 
 // ======================
-// FUNÇÃO DE FORMATAR VALOR
+// FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
 // ======================
 const formatMoney = (value) => {
-  if (value >= 1e9) return (value / 1e9).toFixed(2) + "B/s";
-  if (value >= 1e6) return (value / 1e6).toFixed(2) + "M/s";
-  if (value >= 1e3) return (value / 1e3).toFixed(2) + "K/s";
+  value = Math.floor(value); // garante inteiro
+  if (value >= 1e9) return Math.floor(value / 1e9) + "B/s";
+  if (value >= 1e6) return Math.floor(value / 1e6) + "M/s";
+  if (value >= 1e3) return Math.floor(value / 1e3) + "K/s";
   return value + "/s";
 };
 
@@ -139,7 +135,7 @@ client.on("messageCreate", async (msg) => {
       let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
       if (m.includes("M")) value *= 1_000_000;
       else if (m.includes("K")) value *= 1_000;
-      return value;
+      return Math.floor(value); // garante inteiro
     });
 
     const players = getFieldValue("players");
