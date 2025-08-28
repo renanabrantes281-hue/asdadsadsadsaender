@@ -3,7 +3,9 @@ const express = require("express");
 const { Client } = require("discord.js-selfbot-v13");
 const axios = require("axios");
 
-// Configurações do Express
+// ======================
+// CONFIGURAÇÕES DO EXPRESS
+// ======================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -22,22 +24,23 @@ setInterval(() => {
     .catch(() => console.log("⚠️ Falha no auto-ping"));
 }, 25000);
 
-// Variáveis do .env
+// ======================
+// VARIÁVEIS DO .ENV
+// ======================
 const token = process.env.DISCORD_TOKEN;
 const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;
-
-// Dois webhooks HIGH separados
 const webhookHighs = [
   process.env.OUTPUT_WEBHOOK_HIGH,
   process.env.OUTPUT_WEBHOOK_HIGH_2
 ].filter(Boolean);
 
-// Canais monitorados
+// ======================
+// CONFIGURAÇÕES DE MONITORAMENTO
+// ======================
 const monitorChannelIds = [
   "1397492388204777492"
 ];
 
-// Nomes que mencionam everyone
 const mentionEveryoneNames = [
   "Garama and Madundung",
   "Dragon Cannelloni"
@@ -49,6 +52,68 @@ client.on("ready", () => {
   console.log(`✅ Logado como ${client.user.tag}`);
 });
 
+// ======================
+// FUNÇÃO DE FORMATAR VALOR
+// ======================
+const formatMoney = (value) => {
+  if (value >= 1e9) return (value / 1e9).toFixed(2) + "B/s";
+  if (value >= 1e6) return (value / 1e6).toFixed(2) + "M/s";
+  if (value >= 1e3) return (value / 1e3).toFixed(2) + "K/s";
+  return value + "/s";
+};
+
+// ======================
+// FUNÇÃO DE ENVIO DE EMBED MODERNO
+// ======================
+const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, jobPC, scriptJoinPC) => {
+  if (!pets.length) return;
+
+  const embedColor = isHigh ? 0xf1c40f : 0x9b59b6;
+
+  // Apenas thumbnail e footer (sem banner)
+  const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg?ex=68b20173&is=68b0aff3&hm=dc295228bc5f5e1af50b317dd6711fa2e5faf974436bb41e9e64b996699cff2f&=&format=webp&width=839&height=839";
+
+  const embedToSend = {
+    title: isHigh ? "⚡ HIGH VALUE PETS" : "🔮 LOW VALUE PETS",
+    color: embedColor,
+    description: pets.map((p, i) =>
+      `\`${i + 1}\` 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`
+    ).join("\n"),
+    fields: [
+      { name: "👥 Players", value: `\`${players}\``, inline: true },
+      { name: "📱 Mobile Job", value: `\`${jobMobile}\``, inline: true },
+      { name: "💻 PC Job", value: `\`${jobPC}\``, inline: true },
+      {
+        name: "🚀 Quick Join",
+        value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
+        inline: false
+      },
+      {
+        name: "💻 Script Join (PC)",
+        value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``,
+        inline: false
+      }
+    ],
+    thumbnail: { url: imageUrl },
+    timestamp: new Date(),
+    footer: {
+      text: isHigh ? "🔥 Shadow Hub Premium Dashboard" : "⚡ Shadow Hub Finder",
+      icon_url: imageUrl
+    }
+  };
+
+  const payload = { embeds: [embedToSend] };
+
+  targetWebhooks.forEach(webhook => {
+    axios.post(webhook, payload)
+      .then(() => console.log(`📨 Enviado ${pets.length} pets para webhook: ${webhook}`))
+      .catch(err => console.error("❌ Erro webhook:", err.message));
+  });
+};
+
+// ======================
+// EVENTO DE MONITORAMENTO
+// ======================
 client.on("messageCreate", async (msg) => {
   try {
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
@@ -84,64 +149,22 @@ client.on("messageCreate", async (msg) => {
 
     let petsHigh = [];
     let petsLow = [];
-    let mentionEveryone = false;
 
     namesList.forEach((name, idx) => {
       const moneyValue = moneyList[idx] || 0;
-      if (mentionEveryoneNames.includes(name)) mentionEveryone = true;
-
-      if (moneyValue >= 10_000_000) {
-        petsHigh.push({ name, money: moneyValue });
-      } else {
-        petsLow.push({ name, money: moneyValue });
-      }
+      if (moneyValue >= 10_000_000) petsHigh.push({ name, money: moneyValue });
+      else petsLow.push({ name, money: moneyValue });
     });
 
-    const formatMoney = (num) => {
-      if (num >= 1_000_000) return `${Math.round(num / 1_000_000)}M/s`;
-      if (num >= 1_000) return `${Math.round(num / 1_000)}K/s`;
-      return `${num}/s`;
-    };
-
-    const sendEmbed = (pets, targetWebhooks) => {
-      if (!pets.length) return;
-
-      const placeId = jobMobile;
-      const gameInstanceId = jobPC;
-
-      const embedToSend = {
-        title: "Shadow Hub Pet Finder",
-        color: 0x9152f8,
-        description: `Found **${pets.length}** pet(s): ${pets.map(p => p.name).join(", ")}`,
-        fields: [
-          { name: "🏷️ Name", value: pets.map(p => p.name).join(", "), inline: false },
-          { name: "💰 Generation", value: pets.map(p => formatMoney(p.money)).join(", "), inline: false },
-          { name: "👥 Players", value: `**${players}**`, inline: true },
-          { name: "🔢 Job ID (Mobile)", value: placeId, inline: false },
-          { name: "🔢 Job ID (PC)", value: `\`\`\`${gameInstanceId}\`\`\``, inline: false },
-          { name: "🔗 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false },
-          { name: "🚀 Click for Join", value: `[Click for join](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${placeId}&gameInstanceId=${gameInstanceId})`, inline: false }
-        ],
-        timestamp: new Date(),
-        footer: { text: "SHADOW HUB ON TOP", icon_url: "https://i.pinimg.com/1200x/14/37/4f/14374f6454e77e82c48051a3bb61dd9c.jpg" },
-      };
-
-      const payload = { embeds: [embedToSend] };
-
-      targetWebhooks.forEach(webhook => {
-        axios.post(webhook, payload)
-          .then(() => console.log(`📨 Enviado ${pets.length} pets para webhook: ${webhook}`))
-          .catch(err => console.error("❌ Erro webhook:", err.message));
-      });
-    };
-
-    // Envio para webhooks
-    sendEmbed(petsHigh, webhookHighs);
-    sendEmbed(petsLow, [webhookLow]);
+    sendEmbed(petsHigh, webhookHighs, true, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsLow, [webhookLow], false, players, jobMobile, jobPC, scriptJoinPC);
 
   } catch (err) {
     console.error("⚠️ Erro ao processar:", err);
   }
 });
 
+// ======================
+// LOGIN
+// ======================
 client.login(token);
