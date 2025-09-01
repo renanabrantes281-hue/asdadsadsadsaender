@@ -65,7 +65,6 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
   if (!pets.length) return;
 
   const embedColor = isHigh ? 0xf1c40f : 0x9b59b6;
-
   const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg";
 
   const embedToSend = {
@@ -76,8 +75,8 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
     ).join("\n"),
     fields: [
       { name: "👥 Players", value: `${players}`, inline: true },
-      { name: "📱 Mobile Job", value: `${jobMobile}`, inline: true },
-      { name: "💻 PC Job", value: `${jobPC}`, inline: true },
+      { name: "📱 Mobile Job", value: `\`${jobMobile}\``, inline: true },
+      { name: "💻 PC Job", value: `\`${jobPC}\``, inline: true },
       {
         name: "🚀 Quick Join",
         value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
@@ -148,8 +147,8 @@ client.on("messageCreate", async (msg) => {
     // CASO 2: MENSAGEM DE TEXTO
     // ======================
     else if (msg.content) {
-      // Exemplo esperado: "Names: X, Y | Money: 10K, 5M | Mobile: 123456 | PC: 654321 | Players: 5"
-      const match = /Names:\s*(.+?)\s*\|\s*Money:\s*(.+?)\s*\|\s*Mobile:\s*(\d+)\s*\|\s*PC:\s*(\d+)\s*\|\s*Players:\s*(\d+)/i.exec(msg.content);
+      // Exemplo esperado: "Names: X, Y | Money: 10K, 5M | Mobile: 2i149149 | PC: 654321 | Players: 5"
+      const match = /Names:\s*(.+?)\s*\|\s*Money:\s*(.+?)\s*\|\s*Mobile:\s*([^|]+)\s*\|\s*PC:\s*([^|]+)\s*\|\s*Players:\s*(\d+)/i.exec(msg.content);
       if (match) {
         namesList = match[1].split(",").map(n => n.trim());
         moneyList = match[2].split(",").map(m => {
@@ -159,8 +158,8 @@ client.on("messageCreate", async (msg) => {
           else if (m.includes("K")) value *= 1_000;
           return Math.floor(value);
         });
-        jobMobile = match[3];
-        jobPC = match[4];
+        jobMobile = match[3].trim();
+        jobPC = match[4].trim();
         players = match[5];
       }
     }
