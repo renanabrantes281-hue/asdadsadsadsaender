@@ -48,7 +48,7 @@ client.on("ready", () => {
 });
 
 // ======================
-// FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
+// FUNÇÃO DE FORMATAR VALOR
 // ======================
 const formatMoney = (value) => {
   value = Math.floor(value);
@@ -59,7 +59,7 @@ const formatMoney = (value) => {
 };
 
 // ======================
-// FUNÇÃO DE ENVIO DE EMBED MODERNO
+// FUNÇÃO DE ENVIO DE EMBED
 // ======================
 const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, jobPC, scriptJoinPC) => {
   if (!pets.length) return;
@@ -75,19 +75,14 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
     ).join("\n"),
     fields: [
       { name: "👥 Players", value: `${players}`, inline: true },
-     { name: "📳 Job ID (Mobile)", value: jobMobile, inline: false },
-      
+      { name: "📳 Job ID (Mobile)", value: jobMobile, inline: false },
       { name: "💻 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
       {
         name: "🚀 Quick Join",
         value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
         inline: false
       },
-      {
-        name: "💻 Script Join (PC)",
-        value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``,
-        inline: false
-      }
+      { name: "💻 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false }
     ],
     thumbnail: { url: imageUrl },
     timestamp: new Date(),
@@ -148,7 +143,6 @@ client.on("messageCreate", async (msg) => {
     // CASO 2: MENSAGEM DE TEXTO
     // ======================
     else if (msg.content) {
-      // Exemplo esperado: "Names: X, Y | Money: 10K, 5M | Mobile: 2i149149 | PC: 654321 | Players: 5"
       const match = /Names:\s*(.+?)\s*\|\s*Money:\s*(.+?)\s*\|\s*Mobile:\s*([^|]+)\s*\|\s*PC:\s*([^|]+)\s*\|\s*Players:\s*(\d+)/i.exec(msg.content);
       if (match) {
         namesList = match[1].split(",").map(n => n.trim());
@@ -190,5 +184,3 @@ client.on("messageCreate", async (msg) => {
 // LOGIN
 // ======================
 client.login(token);
-
-
