@@ -42,9 +42,10 @@ const monitorChannelIds = [
 
 const client = new Client();
 
-client.on("ready", () => {
-  console.log(`✅ Logado como ${client.user.tag}`);
-});
+// ======================
+// CONJUNTO PARA EVITAR DUPLICADOS
+// ======================
+const sentPets = new Set();
 
 // ======================
 // FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
@@ -102,12 +103,18 @@ const sendEmbed = (pets, targetWebhook, title, color, players, jobMobile, jobPC,
 };
 
 // ======================
+// LOGIN
+// ======================
+client.on("ready", () => {
+  console.log(`✅ Logado como ${client.user.tag}`);
+});
+
+// ======================
 // EVENTO DE MONITORAMENTO
 // ======================
 client.on("messageCreate", async (msg) => {
   try {
-    if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
-    if (!msg.embeds.length) return;
+    if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId || !msg.embeds.length) return;
 
     const embed = msg.embeds[0];
     const fields = embed.fields || [];
@@ -119,11 +126,16 @@ client.on("messageCreate", async (msg) => {
 
     const namesRaw = getFieldValue("name");
     if (namesRaw === "N/A") return;
-    const namesList = namesRaw.split(",").map(n => n.trim());
 
     const moneyRaw = getFieldValue("Generation");
     if (!moneyRaw || moneyRaw === "N/A") return;
 
+    const players = getFieldValue("players");
+    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/`/g, "");
+    const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
+    const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
+
+    const namesList = namesRaw.split(",").map(n => n.trim());
     const moneyList = moneyRaw.split(",").map(m => {
       m = m.trim().toUpperCase();
       let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
@@ -132,28 +144,24 @@ client.on("messageCreate", async (msg) => {
       return Math.floor(value);
     });
 
-    const players = getFieldValue("players");
-    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/`/g, "");
-    const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
-    const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
-
-    let petsLow = [];   // 1M - 9M
-    let petsMid = [];   // 10M - 40M
-    let petsHigh = [];  // 50M - 90M
-    let petsUltra = []; // 100M+
+    const petsBuckets = { low: [], mid: [], high: [], ultra: [] };
 
     namesList.forEach((name, idx) => {
       const moneyValue = moneyList[idx] || 0;
-      if (moneyValue >= 1_000_000 && moneyValue < 10_000_000) petsLow.push({ name, money: moneyValue });
-      else if (moneyValue >= 10_000_000 && moneyValue <= 40_000_000) petsMid.push({ name, money: moneyValue });
-      else if (moneyValue >= 50_000_000 && moneyValue <= 90_000_000) petsHigh.push({ name, money: moneyValue });
-      else if (moneyValue >= 100_000_000) petsUltra.push({ name, money: moneyValue });
+      const key = `${name}_${moneyValue}`;
+      if (sentPets.has(key)) return; // evita duplicados
+      sentPets.add(key);
+
+      if (moneyValue >= 1_000_000 && moneyValue < 10_000_000) petsBuckets.low.push({ name, money: moneyValue });
+      else if (moneyValue >= 10_000_000 && moneyValue <= 40_000_000) petsBuckets.mid.push({ name, money: moneyValue });
+      else if (moneyValue >= 50_000_000 && moneyValue <= 90_000_000) petsBuckets.high.push({ name, money: moneyValue });
+      else if (moneyValue >= 100_000_000) petsBuckets.ultra.push({ name, money: moneyValue });
     });
 
-    sendEmbed(petsLow, webhookLow, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC);
-    sendEmbed(petsMid, webhookMid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC);
-    sendEmbed(petsHigh, webhookHigh, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC);
-    sendEmbed(petsUltra, webhookUltra, "💎 PETS 100M+", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsBuckets.low, webhookLow, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsBuckets.mid, webhookMid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsBuckets.high, webhookHigh, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsBuckets.ultra, webhookUltra, "💎 PETS 100M+", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC);
 
   } catch (err) {
     console.error("⚠️ Erro ao processar:", err);
@@ -161,6 +169,6 @@ client.on("messageCreate", async (msg) => {
 });
 
 // ======================
-// LOGIN
+// LOGIN NO DISCORD
 // ======================
 client.login(token);
