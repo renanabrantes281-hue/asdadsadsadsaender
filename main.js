@@ -40,10 +40,6 @@ const webhooks = {
 const monitorChannelIds = ["1397492388204777492"];
 const client = new Client();
 
-client.on("ready", () => {
-  console.log(`✅ Logado como ${client.user.tag}`);
-});
-
 // ======================
 // FUNÇÕES AUXILIARES
 // ======================
@@ -119,9 +115,9 @@ const categorizePets = (names, moneyValues) => {
 };
 
 // ======================
-// EVENTO DE MONITORAMENTO
+// PROCESSAMENTO DE MENSAGENS
 // ======================
-client.on("messageCreate", async (msg) => {
+const handleMessage = async (msg) => {
   try {
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
     if (!msg.embeds.length) return;
@@ -156,13 +152,14 @@ client.on("messageCreate", async (msg) => {
     // Classificação automática
     const categories = categorizePets(names, moneyValues);
 
-    // Envia cada categoria
-    await sendEmbed(categories.low, webhooks.low, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC);
-    await sendEmbed(categories.mid, webhooks.mid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC);
-    await sendEmbed(categories.high, webhooks.high, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC);
-    await sendEmbed(categories.ultra, webhooks.ultra, "💎 PETS 100M+", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC);
+    // Envia todos os webhooks em paralelo
+    await Promise.all([
+      sendEmbed(categories.low, webhooks.low, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC),
+      sendEmbed(categories.mid, webhooks.mid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC),
+      sendEmbed(categories.high, webhooks.high, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC),
+      sendEmbed(categories.ultra, webhooks.ultra, "💎 PETS 100M+ SHADOWHUB", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC)
+    ]);
 
-    // Log resumido
     console.log(
       `📊 Classificação: Low(${categories.low.length}) | Mid(${categories.mid.length}) | High(${categories.high.length}) | Ultra(${categories.ultra.length})`
     );
@@ -170,9 +167,18 @@ client.on("messageCreate", async (msg) => {
   } catch (err) {
     console.error("⚠️ Erro ao processar mensagem:", err);
   }
-});
+};
+
+// ======================
+// EVENTO DE MONITORAMENTO
+// ======================
+client.on("messageCreate", handleMessage);
 
 // ======================
 // LOGIN
 // ======================
+client.on("ready", () => {
+  console.log(`✅ Logado como ${client.user.tag}`);
+});
+
 client.login(token);
