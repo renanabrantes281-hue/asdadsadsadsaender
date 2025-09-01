@@ -51,7 +51,7 @@ client.on("ready", () => {
 // FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
 // ======================
 const formatMoney = (value) => {
-  value = Math.floor(value); // garante inteiro
+  value = Math.floor(value);
   if (value >= 1e9) return Math.floor(value / 1e9) + "B/s";
   if (value >= 1e6) return Math.floor(value / 1e6) + "M/s";
   if (value >= 1e3) return Math.floor(value / 1e3) + "K/s";
@@ -112,34 +112,61 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
 client.on("messageCreate", async (msg) => {
   try {
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
-    if (!msg.embeds.length) return;
 
-    const embed = msg.embeds[0];
-    const fields = embed.fields || [];
+    let namesList = [];
+    let moneyList = [];
+    let players = "N/A";
+    let jobMobile = "N/A";
+    let jobPC = "N/A";
 
-    const getFieldValue = (name) => {
-      const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
-      return field ? field.value : "N/A";
-    };
+    // ======================
+    // CASO 1: EMBED
+    // ======================
+    if (msg.embeds.length) {
+      const embed = msg.embeds[0];
+      const fields = embed.fields || [];
+      const getFieldValue = (name) => {
+        const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
+        return field ? field.value : "N/A";
+      };
 
-    const namesRaw = getFieldValue("name");
-    if (namesRaw === "N/A") return;
-    const namesList = namesRaw.split(",").map(n => n.trim());
+      namesList = (getFieldValue("name") || "").split(",").map(n => n.trim());
+      moneyList = (getFieldValue("Generation") || "")
+        .split(",")
+        .map(m => {
+          m = m.trim().toUpperCase();
+          let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
+          if (m.includes("M")) value *= 1_000_000;
+          else if (m.includes("K")) value *= 1_000;
+          return Math.floor(value);
+        });
+      players = getFieldValue("players") || "N/A";
+      jobMobile = (getFieldValue("mobile") || "N/A").replace(/\s/g, "");
+      jobPC = (getFieldValue("pc") || "N/A").replace(/\s/g, "");
+    } 
+    // ======================
+    // CASO 2: MENSAGEM DE TEXTO
+    // ======================
+    else if (msg.content) {
+      // Exemplo esperado: "Names: X, Y | Money: 10K, 5M | Mobile: 123456 | PC: 654321 | Players: 5"
+      const match = /Names:\s*(.+?)\s*\|\s*Money:\s*(.+?)\s*\|\s*Mobile:\s*(\d+)\s*\|\s*PC:\s*(\d+)\s*\|\s*Players:\s*(\d+)/i.exec(msg.content);
+      if (match) {
+        namesList = match[1].split(",").map(n => n.trim());
+        moneyList = match[2].split(",").map(m => {
+          m = m.trim().toUpperCase();
+          let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
+          if (m.includes("M")) value *= 1_000_000;
+          else if (m.includes("K")) value *= 1_000;
+          return Math.floor(value);
+        });
+        jobMobile = match[3];
+        jobPC = match[4];
+        players = match[5];
+      }
+    }
 
-    const moneyRaw = getFieldValue("Generation");
-    if (!moneyRaw || moneyRaw === "N/A") return;
+    if (!namesList.length) return;
 
-    const moneyList = moneyRaw.split(",").map(m => {
-      m = m.trim().toUpperCase();
-      let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
-      if (m.includes("M")) value *= 1_000_000;
-      else if (m.includes("K")) value *= 1_000;
-      return Math.floor(value);
-    });
-
-    const players = getFieldValue("players");
-    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/\s/g, "");
-    const jobPC = (getFieldValue("pc") || "N/A").replace(/\s/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
     let petsHigh = [];
