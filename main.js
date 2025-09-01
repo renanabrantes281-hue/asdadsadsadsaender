@@ -77,7 +77,7 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
       { name: "👥 Players", value: `${players}`, inline: true },
      { name: "📳 Job ID (Mobile)", value: jobMobile, inline: false },
       
-      { name: "💻 PC Job", value: `\`${jobPC}\``, inline: true },
+      { name: "💻 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
       {
         name: "🚀 Quick Join",
         value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
@@ -190,4 +190,5 @@ client.on("messageCreate", async (msg) => {
 // LOGIN
 // ======================
 client.login(token);
+
 
