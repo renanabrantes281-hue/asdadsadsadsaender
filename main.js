@@ -17,10 +17,9 @@ app.listen(PORT, () => {
   console.log(`Servidor web rodando na porta ${PORT}`);
 });
 
-// Auto ping interno para manter vivo
+// Auto Ping interno para manter vivo
 setInterval(() => {
-  axios
-    .get(`http://localhost:${PORT}`)
+  axios.get(`http://localhost:${PORT}`)
     .then(() => console.log("🔄 Auto-ping enviado"))
     .catch(() => console.log("⚠️ Falha no auto-ping"));
 }, 25000);
@@ -38,7 +37,10 @@ const webhookHighs = [
 // ======================
 // CONFIGURAÇÕES DE MONITORAMENTO
 // ======================
-const monitorChannelIds = ["1397492388204777492"];
+const monitorChannelIds = [
+  "1397492388204777492" // substitua pelo ID do canal que deseja monitorar
+];
+
 const client = new Client();
 
 client.on("ready", () => {
@@ -49,7 +51,7 @@ client.on("ready", () => {
 // FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
 // ======================
 const formatMoney = (value) => {
-  value = Math.floor(value);
+  value = Math.floor(value); // garante inteiro
   if (value >= 1e9) return Math.floor(value / 1e9) + "B/s";
   if (value >= 1e6) return Math.floor(value / 1e6) + "M/s";
   if (value >= 1e3) return Math.floor(value / 1e3) + "K/s";
@@ -57,32 +59,46 @@ const formatMoney = (value) => {
 };
 
 // ======================
-// FUNÇÃO DE ENVIO DE EMBED
+// FUNÇÃO DE ENVIO DE EMBED MODERNO
 // ======================
 const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, jobPC, scriptJoinPC) => {
   if (!pets.length) return;
 
   const embedColor = isHigh ? 0xf1c40f : 0x9b59b6;
+
   const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg";
 
   const embedToSend = {
     title: isHigh ? "⚡ HIGH VALUE PETS" : "🔮 LOW VALUE PETS",
     color: embedColor,
-    description: pets.map((p, i) => `${i + 1} 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`).join("\n"),
+    description: pets.map((p, i) =>
+      `${i + 1} 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`
+    ).join("\n"),
     fields: [
       { name: "👥 Players", value: `${players}`, inline: true },
       { name: "📱 Mobile Job", value: `${jobMobile}`, inline: true },
       { name: "💻 PC Job", value: `${jobPC}`, inline: true },
-      { name: "🚀 Quick Join", value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`, inline: false },
-      { name: "💻 Script Join (PC)", value: `\\lua\n${scriptJoinPC}\n\\`, inline: false }
+      {
+        name: "🚀 Quick Join",
+        value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
+        inline: false
+      },
+      {
+        name: "💻 Script Join (PC)",
+        value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``,
+        inline: false
+      }
     ],
     thumbnail: { url: imageUrl },
     timestamp: new Date(),
-    footer: { text: isHigh ? "🔥 Shadow Hub Premium Dashboard" : "⚡ Shadow Hub Finder", icon_url: imageUrl }
+    footer: {
+      text: isHigh ? "🔥 Shadow Hub Premium Dashboard" : "⚡ Shadow Hub Finder",
+      icon_url: imageUrl
+    }
   };
 
   const payload = { embeds: [embedToSend] };
-  
+
   targetWebhooks.forEach(webhook => {
     axios.post(webhook, payload)
       .then(() => console.log(`📨 Enviado ${pets.length} pets para webhook: ${webhook}`))
@@ -108,8 +124,8 @@ client.on("messageCreate", async (msg) => {
 
     const namesRaw = getFieldValue("name");
     if (namesRaw === "N/A") return;
-
     const namesList = namesRaw.split(",").map(n => n.trim());
+
     const moneyRaw = getFieldValue("Generation");
     if (!moneyRaw || moneyRaw === "N/A") return;
 
@@ -122,8 +138,8 @@ client.on("messageCreate", async (msg) => {
     });
 
     const players = getFieldValue("players");
-    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/\\/g, "");
-    const jobPC = (getFieldValue("pc") || "N/A").replace(/\\/g, "");
+    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/\s/g, "");
+    const jobPC = (getFieldValue("pc") || "N/A").replace(/\s/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
     let petsHigh = [];
