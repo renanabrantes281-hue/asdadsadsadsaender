@@ -28,11 +28,10 @@ setInterval(() => {
 // VARIÁVEIS DO .ENV
 // ======================
 const token = process.env.DISCORD_TOKEN;
-const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;
-const webhookHighs = [
-  process.env.OUTPUT_WEBHOOK_HIGH,
-  process.env.OUTPUT_WEBHOOK_HIGH_2
-].filter(Boolean);
+const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;         // 1M - 9M
+const webhookMid = process.env.OUTPUT_WEBHOOK_MID;         // 10M - 40M
+const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH;       // 50M - 90M
+const webhookUltra = process.env.OUTPUT_WEBHOOK_ULTRA;     // 100M - 1B+
 
 // ======================
 // CONFIGURAÇÕES DE MONITORAMENTO
@@ -59,19 +58,16 @@ const formatMoney = (value) => {
 };
 
 // ======================
-// FUNÇÃO DE ENVIO DE EMBED MODERNO
+// FUNÇÃO DE ENVIO DE EMBED
 // ======================
-const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, jobPC, scriptJoinPC) => {
-  if (!pets.length) return;
+const sendEmbed = (pets, targetWebhook, title, color, players, jobMobile, jobPC, scriptJoinPC) => {
+  if (!pets.length || !targetWebhook) return;
 
-  const embedColor = isHigh ? 0xf1c40f : 0x9b59b6;
-
-  // Apenas thumbnail e footer (sem banner)
-  const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg?ex=68b20173&is=68b0aff3&hm=dc295228bc5f5e1af50b317dd6711fa2e5faf974436bb41e9e64b996699cff2f&=&format=webp&width=839&height=839";
+  const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg";
 
   const embedToSend = {
-    title: isHigh ? "⚡ HIGH VALUE PETS" : "🔮 LOW VALUE PETS",
-    color: embedColor,
+    title,
+    color,
     description: pets.map((p, i) =>
       `\`${i + 1}\` 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`
     ).join("\n"),
@@ -93,18 +89,16 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
     thumbnail: { url: imageUrl },
     timestamp: new Date(),
     footer: {
-      text: isHigh ? "🔥 Shadow Hub Premium Dashboard" : "⚡ Shadow Hub Finder",
+      text: title,
       icon_url: imageUrl
     }
   };
 
   const payload = { embeds: [embedToSend] };
 
-  targetWebhooks.forEach(webhook => {
-    axios.post(webhook, payload)
-      .then(() => console.log(`📨 Enviado ${pets.length} pets para webhook: ${webhook}`))
-      .catch(err => console.error("❌ Erro webhook:", err.message));
-  });
+  axios.post(targetWebhook, payload)
+    .then(() => console.log(`📨 Enviado ${pets.length} pets para ${title}`))
+    .catch(err => console.error("❌ Erro webhook:", err.message));
 };
 
 // ======================
@@ -135,7 +129,7 @@ client.on("messageCreate", async (msg) => {
       let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
       if (m.includes("M")) value *= 1_000_000;
       else if (m.includes("K")) value *= 1_000;
-      return Math.floor(value); // garante inteiro
+      return Math.floor(value);
     });
 
     const players = getFieldValue("players");
@@ -143,17 +137,23 @@ client.on("messageCreate", async (msg) => {
     const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
-    let petsHigh = [];
-    let petsLow = [];
+    let petsLow = [];   // 1M - 9M
+    let petsMid = [];   // 10M - 40M
+    let petsHigh = [];  // 50M - 90M
+    let petsUltra = []; // 100M+
 
     namesList.forEach((name, idx) => {
       const moneyValue = moneyList[idx] || 0;
-      if (moneyValue >= 10_000_000) petsHigh.push({ name, money: moneyValue });
-      else petsLow.push({ name, money: moneyValue });
+      if (moneyValue >= 1_000_000 && moneyValue < 10_000_000) petsLow.push({ name, money: moneyValue });
+      else if (moneyValue >= 10_000_000 && moneyValue <= 40_000_000) petsMid.push({ name, money: moneyValue });
+      else if (moneyValue >= 50_000_000 && moneyValue <= 90_000_000) petsHigh.push({ name, money: moneyValue });
+      else if (moneyValue >= 100_000_000) petsUltra.push({ name, money: moneyValue });
     });
 
-    sendEmbed(petsHigh, webhookHighs, true, players, jobMobile, jobPC, scriptJoinPC);
-    sendEmbed(petsLow, [webhookLow], false, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsLow, webhookLow, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsMid, webhookMid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsHigh, webhookHigh, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsUltra, webhookUltra, "💎 PETS 100M+", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC);
 
   } catch (err) {
     console.error("⚠️ Erro ao processar:", err);
