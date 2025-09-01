@@ -75,7 +75,8 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
     ).join("\n"),
     fields: [
       { name: "👥 Players", value: `${players}`, inline: true },
-      { name: "📱 Mobile Job", value: `\`${jobMobile}\``, inline: true },
+     { name: "📳 Job ID (Mobile)", value: jobMobile, inline: false },
+      
       { name: "💻 PC Job", value: `\`${jobPC}\``, inline: true },
       {
         name: "🚀 Quick Join",
@@ -189,3 +190,4 @@ client.on("messageCreate", async (msg) => {
 // LOGIN
 // ======================
 client.login(token);
+
