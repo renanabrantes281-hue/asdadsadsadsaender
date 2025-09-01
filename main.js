@@ -4,62 +4,68 @@ const { Client } = require("discord.js-selfbot-v13");
 const axios = require("axios");
 
 // ======================
-// EXPRESS SERVER
+// CONFIGURAÇÕES DO EXPRESS
 // ======================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get("/", (_, res) => res.send("Bot rodando e servidor ativo!"));
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor web rodando na porta ${PORT}`);
+app.get("/", (req, res) => {
+  res.send("Bot rodando e servidor ativo!");
 });
 
-// Mantém o bot vivo com auto-ping
+app.listen(PORT, () => {
+  console.log(`Servidor web rodando na porta ${PORT}`);
+});
+
+// Auto Ping interno para manter vivo
 setInterval(() => {
   axios.get(`http://localhost:${PORT}`)
     .then(() => console.log("🔄 Auto-ping enviado"))
-    .catch(() => console.warn("⚠️ Falha no auto-ping"));
+    .catch(() => console.log("⚠️ Falha no auto-ping"));
 }, 25000);
 
 // ======================
 // VARIÁVEIS DO .ENV
 // ======================
 const token = process.env.DISCORD_TOKEN;
-
-const webhooks = {
-  low: process.env.OUTPUT_WEBHOOK_LOW,       // 1M - 9M
-  mid: process.env.OUTPUT_WEBHOOK_MID,       // 10M - 40M
-  high: process.env.OUTPUT_WEBHOOK_HIGH,     // 50M - 90M
-  ultra: process.env.OUTPUT_WEBHOOK_ULTRA    // 100M+
-};
+const webhookLow = process.env.OUTPUT_WEBHOOK_LOW;         // 1M - 9M
+const webhookMid = process.env.OUTPUT_WEBHOOK_MID;         // 10M - 40M
+const webhookHigh = process.env.OUTPUT_WEBHOOK_HIGH;       // 50M - 90M
+const webhookUltra = process.env.OUTPUT_WEBHOOK_ULTRA;     // 100M - 1B+
 
 // ======================
 // CONFIGURAÇÕES DE MONITORAMENTO
 // ======================
-const monitorChannelIds = ["1397492388204777492"];
+const monitorChannelIds = [
+  "1397492388204777492"
+];
+
 const client = new Client();
 
-// ======================
-// FUNÇÕES AUXILIARES
-// ======================
+client.on("ready", () => {
+  console.log(`✅ Logado como ${client.user.tag}`);
+});
 
-// Formata valores numéricos em K/M/B
+// ======================
+// FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
+// ======================
 const formatMoney = (value) => {
-  value = Math.floor(value);
+  value = Math.floor(value); // garante inteiro
   if (value >= 1e9) return Math.floor(value / 1e9) + "B/s";
   if (value >= 1e6) return Math.floor(value / 1e6) + "M/s";
   if (value >= 1e3) return Math.floor(value / 1e3) + "K/s";
   return value + "/s";
 };
 
-// Envia embed para um webhook
-const sendEmbed = async (pets, webhookUrl, title, color, players, jobMobile, jobPC, scriptJoinPC) => {
-  if (!pets.length || !webhookUrl) return;
+// ======================
+// FUNÇÃO DE ENVIO DE EMBED
+// ======================
+const sendEmbed = (pets, targetWebhook, title, color, players, jobMobile, jobPC, scriptJoinPC) => {
+  if (!pets.length || !targetWebhook) return;
 
   const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg";
 
-  const embed = {
+  const embedToSend = {
     title,
     color,
     description: pets.map((p, i) =>
@@ -82,42 +88,23 @@ const sendEmbed = async (pets, webhookUrl, title, color, players, jobMobile, job
     ],
     thumbnail: { url: imageUrl },
     timestamp: new Date(),
-    footer: { text: title, icon_url: imageUrl }
+    footer: {
+      text: title,
+      icon_url: imageUrl
+    }
   };
 
-  try {
-    await axios.post(webhookUrl, { embeds: [embed] });
-    console.log(`📨 Enviado ${pets.length} pets para [${title}]`);
-  } catch (err) {
-    console.error(`❌ Erro ao enviar para webhook [${title}]:`, err.message);
-  }
-};
+  const payload = { embeds: [embedToSend] };
 
-// Classifica pets em categorias de acordo com o valor
-const categorizePets = (names, moneyValues) => {
-  const categories = {
-    low: [],   // 1M - 9M
-    mid: [],   // 10M - 40M
-    high: [],  // 50M - 90M
-    ultra: []  // 100M+
-  };
-
-  names.forEach((name, i) => {
-    const money = moneyValues[i] || 0;
-
-    if (money >= 1_000_000 && money < 10_000_000) categories.low.push({ name, money });
-    else if (money >= 10_000_000 && money <= 40_000_000) categories.mid.push({ name, money });
-    else if (money >= 50_000_000 && money <= 90_000_000) categories.high.push({ name, money });
-    else if (money >= 100_000_000) categories.ultra.push({ name, money });
-  });
-
-  return categories;
+  axios.post(targetWebhook, payload)
+    .then(() => console.log(`📨 Enviado ${pets.length} pets para ${title}`))
+    .catch(err => console.error("❌ Erro webhook:", err.message));
 };
 
 // ======================
-// PROCESSAMENTO DE MENSAGENS
+// EVENTO DE MONITORAMENTO
 // ======================
-const handleMessage = async (msg) => {
+client.on("messageCreate", async (msg) => {
   try {
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
     if (!msg.embeds.length) return;
@@ -132,11 +119,12 @@ const handleMessage = async (msg) => {
 
     const namesRaw = getFieldValue("name");
     if (namesRaw === "N/A") return;
-    const names = namesRaw.split(",").map(n => n.trim());
+    const namesList = namesRaw.split(",").map(n => n.trim());
 
     const moneyRaw = getFieldValue("Generation");
     if (!moneyRaw || moneyRaw === "N/A") return;
-    const moneyValues = moneyRaw.split(",").map(m => {
+
+    const moneyList = moneyRaw.split(",").map(m => {
       m = m.trim().toUpperCase();
       let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
       if (m.includes("M")) value *= 1_000_000;
@@ -149,36 +137,30 @@ const handleMessage = async (msg) => {
     const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
-    // Classificação automática
-    const categories = categorizePets(names, moneyValues);
+    let petsLow = [];   // 1M - 9M
+    let petsMid = [];   // 10M - 40M
+    let petsHigh = [];  // 50M - 90M
+    let petsUltra = []; // 100M+
 
-    // Envia todos os webhooks em paralelo
-    await Promise.all([
-      sendEmbed(categories.low, webhooks.low, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC),
-      sendEmbed(categories.mid, webhooks.mid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC),
-      sendEmbed(categories.high, webhooks.high, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC),
-      sendEmbed(categories.ultra, webhooks.ultra, "💎 PETS 100M+ SHADOWHUB", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC)
-    ]);
+    namesList.forEach((name, idx) => {
+      const moneyValue = moneyList[idx] || 0;
+      if (moneyValue >= 1_000_000 && moneyValue < 10_000_000) petsLow.push({ name, money: moneyValue });
+      else if (moneyValue >= 10_000_000 && moneyValue <= 40_000_000) petsMid.push({ name, money: moneyValue });
+      else if (moneyValue >= 50_000_000 && moneyValue <= 90_000_000) petsHigh.push({ name, money: moneyValue });
+      else if (moneyValue >= 100_000_000) petsUltra.push({ name, money: moneyValue });
+    });
 
-    console.log(
-      `📊 Classificação: Low(${categories.low.length}) | Mid(${categories.mid.length}) | High(${categories.high.length}) | Ultra(${categories.ultra.length})`
-    );
+    sendEmbed(petsLow, webhookLow, "🔮 PETS 1M - 9M", 0x9b59b6, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsMid, webhookMid, "⚡ PETS 10M - 40M", 0x3498db, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsHigh, webhookHigh, "🔥 PETS 50M - 90M", 0xe67e22, players, jobMobile, jobPC, scriptJoinPC);
+    sendEmbed(petsUltra, webhookUltra, "💎 PETS 100M+", 0xf1c40f, players, jobMobile, jobPC, scriptJoinPC);
 
   } catch (err) {
-    console.error("⚠️ Erro ao processar mensagem:", err);
+    console.error("⚠️ Erro ao processar:", err);
   }
-};
-
-// ======================
-// EVENTO DE MONITORAMENTO
-// ======================
-client.on("messageCreate", handleMessage);
+});
 
 // ======================
 // LOGIN
 // ======================
-client.on("ready", () => {
-  console.log(`✅ Logado como ${client.user.tag}`);
-});
-
 client.login(token);
