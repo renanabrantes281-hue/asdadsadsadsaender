@@ -38,7 +38,7 @@ const webhookHighs = [
 // CONFIGURAÇÕES DE MONITORAMENTO
 // ======================
 const monitorChannelIds = [
-  "1397492388204777492" // substitua pelo ID do canal que deseja monitorar
+  "1397492388204777492"
 ];
 
 const client = new Client();
@@ -48,10 +48,10 @@ client.on("ready", () => {
 });
 
 // ======================
-// FUNÇÃO DE FORMATAR VALOR
+// FUNÇÃO DE FORMATAR VALOR (APENAS INTEIROS)
 // ======================
 const formatMoney = (value) => {
-  value = Math.floor(value);
+  value = Math.floor(value); // garante inteiro
   if (value >= 1e9) return Math.floor(value / 1e9) + "B/s";
   if (value >= 1e6) return Math.floor(value / 1e6) + "M/s";
   if (value >= 1e3) return Math.floor(value / 1e3) + "K/s";
@@ -59,30 +59,36 @@ const formatMoney = (value) => {
 };
 
 // ======================
-// FUNÇÃO DE ENVIO DE EMBED
+// FUNÇÃO DE ENVIO DE EMBED MODERNO
 // ======================
 const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, jobPC, scriptJoinPC) => {
   if (!pets.length) return;
 
   const embedColor = isHigh ? 0xf1c40f : 0x9b59b6;
-  const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg";
+
+  // Apenas thumbnail e footer (sem banner)
+  const imageUrl = "https://media.discordapp.net/attachments/1408963499723329680/1410709871300575353/14374f6454e77e82c48051a3bb61dd9c.jpg?ex=68b20173&is=68b0aff3&hm=dc295228bc5f5e1af50b317dd6711fa2e5faf974436bb41e9e64b996699cff2f&=&format=webp&width=839&height=839";
 
   const embedToSend = {
     title: isHigh ? "⚡ HIGH VALUE PETS" : "🔮 LOW VALUE PETS",
     color: embedColor,
     description: pets.map((p, i) =>
-      `${i + 1} 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`
+      `\`${i + 1}\` 🏷️ **${p.name}** ｜ 💰 ${formatMoney(p.money)}`
     ).join("\n"),
     fields: [
-      { name: "👥 Players", value: `${players}`, inline: true },
-      { name: "📳 Job ID (Mobile)", value: jobMobile, inline: false },
-      { name: "💻 Job ID (PC)", value: `\`\`\`${jobPC}\`\`\``, inline: false },
+      { name: "👥 Players", value: `\`${players}\``, inline: true },
+      { name: "📱 Mobile Job", value: `\`${jobMobile}\``, inline: true },
+      { name: "💻 PC Job", value: `\`${jobPC}\``, inline: true },
       {
         name: "🚀 Quick Join",
         value: `[👉 Click Here](https://krkrkrkrkrkrkrkrkrkrkrk.github.io/shadowhub.github.io/?placeId=${jobMobile}&gameInstanceId=${jobPC})`,
         inline: false
       },
-      { name: "💻 Script Join (PC)", value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``, inline: false }
+      {
+        name: "💻 Script Join (PC)",
+        value: `\`\`\`lua\n${scriptJoinPC}\n\`\`\``,
+        inline: false
+      }
     ],
     thumbnail: { url: imageUrl },
     timestamp: new Date(),
@@ -107,60 +113,34 @@ const sendEmbed = (pets, targetWebhooks, isHigh = false, players, jobMobile, job
 client.on("messageCreate", async (msg) => {
   try {
     if (!monitorChannelIds.includes(msg.channel.id) || !msg.webhookId) return;
+    if (!msg.embeds.length) return;
 
-    let namesList = [];
-    let moneyList = [];
-    let players = "N/A";
-    let jobMobile = "N/A";
-    let jobPC = "N/A";
+    const embed = msg.embeds[0];
+    const fields = embed.fields || [];
 
-    // ======================
-    // CASO 1: EMBED
-    // ======================
-    if (msg.embeds.length) {
-      const embed = msg.embeds[0];
-      const fields = embed.fields || [];
-      const getFieldValue = (name) => {
-        const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
-        return field ? field.value : "N/A";
-      };
+    const getFieldValue = (name) => {
+      const field = fields.find(f => f.name.toLowerCase().includes(name.toLowerCase()));
+      return field ? field.value : "N/A";
+    };
 
-      namesList = (getFieldValue("name") || "").split(",").map(n => n.trim());
-      moneyList = (getFieldValue("Generation") || "")
-        .split(",")
-        .map(m => {
-          m = m.trim().toUpperCase();
-          let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
-          if (m.includes("M")) value *= 1_000_000;
-          else if (m.includes("K")) value *= 1_000;
-          return Math.floor(value);
-        });
-      players = getFieldValue("players") || "N/A";
-      jobMobile = (getFieldValue("mobile") || "N/A").replace(/\s/g, "");
-      jobPC = (getFieldValue("pc") || "N/A").replace(/\s/g, "");
-    } 
-    // ======================
-    // CASO 2: MENSAGEM DE TEXTO
-    // ======================
-    else if (msg.content) {
-      const match = /Names:\s*(.+?)\s*\|\s*Money:\s*(.+?)\s*\|\s*Mobile:\s*([^|]+)\s*\|\s*PC:\s*([^|]+)\s*\|\s*Players:\s*(\d+)/i.exec(msg.content);
-      if (match) {
-        namesList = match[1].split(",").map(n => n.trim());
-        moneyList = match[2].split(",").map(m => {
-          m = m.trim().toUpperCase();
-          let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
-          if (m.includes("M")) value *= 1_000_000;
-          else if (m.includes("K")) value *= 1_000;
-          return Math.floor(value);
-        });
-        jobMobile = match[3].trim();
-        jobPC = match[4].trim();
-        players = match[5];
-      }
-    }
+    const namesRaw = getFieldValue("name");
+    if (namesRaw === "N/A") return;
+    const namesList = namesRaw.split(",").map(n => n.trim());
 
-    if (!namesList.length) return;
+    const moneyRaw = getFieldValue("Generation");
+    if (!moneyRaw || moneyRaw === "N/A") return;
 
+    const moneyList = moneyRaw.split(",").map(m => {
+      m = m.trim().toUpperCase();
+      let value = parseFloat(m.replace(/[^0-9.]/g, "")) || 0;
+      if (m.includes("M")) value *= 1_000_000;
+      else if (m.includes("K")) value *= 1_000;
+      return Math.floor(value); // garante inteiro
+    });
+
+    const players = getFieldValue("players");
+    const jobMobile = (getFieldValue("mobile") || "N/A").replace(/`/g, "");
+    const jobPC = (getFieldValue("pc") || "N/A").replace(/`/g, "");
     const scriptJoinPC = `game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "${jobMobile}", game.Players.LocalPlayer)`;
 
     let petsHigh = [];
