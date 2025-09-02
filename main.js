@@ -38,7 +38,7 @@ const webhookHighs = [
 // CONFIGURAÇÕES DE MONITORAMENTO
 // ======================
 const monitorChannelIds = [
-  "1397492388204777492"
+  "1412129468742631525"
 ];
 
 const client = new Client();
@@ -164,3 +164,4 @@ client.on("messageCreate", async (msg) => {
 // LOGIN
 // ======================
 client.login(token);
+
